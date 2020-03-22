@@ -26,6 +26,12 @@ namespace WorkItemPublish
 
         static void Main(string[] args)
         {
+            Console.WriteLine("Enter The Server Url(https://{Instance Name}/{Organisation}): ");
+            Url= Console.ReadLine();
+            Console.WriteLine("Enter The Personal Access Token: ");
+            UserPAT= Console.ReadLine();
+            Console.WriteLine("Enter The Project Nmae: ");
+            ProjectName= Console.ReadLine();
             WIOps.ConnectWithPAT(Url, UserPAT);
             //DT = GetDataTableFromExcel(@"C:\Users\manjunathan\Downloads\naveenkunder-SM-Epic18-03-2020 10_54_40.xlsx",true);
             DT = ReadExcel();//GetDataTableFromExcel(@"C:\Users\manjunathan\Downloads\naveenkunder-SM-Epic18-03-2020 10_54_40.xlsx",true);
