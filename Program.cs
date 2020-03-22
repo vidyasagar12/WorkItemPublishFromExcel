@@ -1,24 +1,16 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Excel = Microsoft.Office.Interop.Excel;
-using Newtonsoft.Json;
 using System.Data;
-using OfficeOpenXml;
-using WorkItemPublish.Model;
-using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
-using System.Security.Policy;
 using WorkItemPublish.Class;
+using Excel = Microsoft.Office.Interop.Excel;
 namespace WorkItemPublish
 {
     class Program
     {
-        static string Url = "https://dev.azure.com/sagorg1";
-        static string UserPAT = "44tfdkhh7t2yzztombfdbzisjs7laljwpo5sbhngbfeyr57e5pta";
-        static string ProjectName = "test3";
+        static string Url = null;
+        static string UserPAT = null;
+        static string ProjectName = null;
         static public int titlecount = 0;
         static public List<string> titles = new List<string>();
         static DataTable DT;
@@ -27,24 +19,19 @@ namespace WorkItemPublish
         static void Main(string[] args)
         {
             Console.WriteLine("Enter The Server Url(https://{Instance Name}/{Organisation}): ");
-            Url= Console.ReadLine();
+            Url = Console.ReadLine();
             Console.WriteLine("Enter The Personal Access Token: ");
-            UserPAT= Console.ReadLine();
+            UserPAT = Console.ReadLine();
             Console.WriteLine("Enter The Project Nmae: ");
-            ProjectName= Console.ReadLine();
+            ProjectName = Console.ReadLine();
             WIOps.ConnectWithPAT(Url, UserPAT);
-            //DT = GetDataTableFromExcel(@"C:\Users\manjunathan\Downloads\naveenkunder-SM-Epic18-03-2020 10_54_40.xlsx",true);
-            DT = ReadExcel();//GetDataTableFromExcel(@"C:\Users\manjunathan\Downloads\naveenkunder-SM-Epic18-03-2020 10_54_40.xlsx",true);
+            DT = ReadExcel();
             List<WorkitemFromExcel> WiList = GetWorkItems();
             CreateLinks(WiList);
         }
         public static List<WorkitemFromExcel> GetWorkItems()
         {
             List<WorkitemFromExcel> workitemlist = new List<WorkitemFromExcel>();
-            /*columns.Add("Title 1");
-            columns.Add("Title 2");
-            columns.Add("Title 3");
-            columns.Add("Title 4");*/
             if (DT.Rows.Count > 0)
             {
                 for (int i = 0; i < DT.Rows.Count; i++)
@@ -81,10 +68,10 @@ namespace WorkItemPublish
         }
         public static void CreateLinks(List<WorkitemFromExcel> WiList)
         {
-            foreach(var wi in WiList)
+            foreach (var wi in WiList)
             {
-                if(wi.parent!=null)
-                WIOps.UpdateWorkItem(wi.parent.Id, wi.id, "");
+                if (wi.parent != null)
+                    WIOps.UpdateWorkItem(wi.parent.Id, wi.id, "");
             }
         }
         public static ParentWorkItem getParentData(DataTable dt, int rowindex, int columnindex)
@@ -103,7 +90,7 @@ namespace WorkItemPublish
                         if (!string.IsNullOrEmpty(dr[TitleColumns[index]].ToString()))
                         {
                             workItem.Id = int.Parse(dr["ID"].ToString());
-                            workItem.tittle = dr[TitleColumns[index]].ToString();                           
+                            workItem.tittle = dr[TitleColumns[index]].ToString();
                             break;
                         }
                         colindex--;
@@ -115,7 +102,7 @@ namespace WorkItemPublish
             return workItem;
 
         }
-    
+
         public static List<string> inavlidCoumns = new List<string>();
         static int createWorkItem(DataRow Dr)
         {
@@ -124,11 +111,11 @@ namespace WorkItemPublish
 
             foreach (DataColumn column in DT.Columns)
             {
-                if (Dr[column.ToString()].ToString()!= "")
+                if (Dr[column.ToString()].ToString() != "")
                 {
                     if (!inavlidCoumns.Contains(column.ToString()))
                     {
-                        if(column.ToString().StartsWith("Title"))
+                        if (column.ToString().StartsWith("Title"))
                             fields.Add("Title", Dr[column.ToString()]);
                         else
                             fields.Add(column.ToString(), Dr[column.ToString()]);
@@ -142,8 +129,10 @@ namespace WorkItemPublish
 
         public static DataTable ReadExcel()
         {
-            Excel.Application xlApp = new Excel.Application();//Do
-            Excel.Workbook xlWorkbook = xlApp.Workbooks.Open(@"C:\Users\vidyasagarp\Documents\naveenkunder-SM-Epic18-03-2020 10_54_40.xlsx");
+            Excel.Application xlApp = new Excel.Application();
+            Console.Write("Enter The Ecel File Path:");
+            string ExcelPath=Console.ReadLine();
+            Excel.Workbook xlWorkbook = xlApp.Workbooks.Open(@""+ExcelPath);
             Excel._Worksheet xlWorksheet = xlWorkbook.Sheets[1];
             Excel.Range xlRange = xlWorksheet.UsedRange;
             int rowCount = xlRange.Rows.Count;
@@ -162,7 +151,7 @@ namespace WorkItemPublish
                         ColName = xlRange.Cells[j][i].Value.ToString();
                         if (ColName.StartsWith("Title"))
                         {
-                            TitleColumns.Add(ColName);                            
+                            TitleColumns.Add(ColName);
                         }
                         DataColumn column = new DataColumn(ColName);
                         Dt.Columns.Add(column);
@@ -173,21 +162,13 @@ namespace WorkItemPublish
                     if (xlRange.Cells[j][i].Value != null)
                         row[ColName] = xlRange.Cells[j][i].Value.ToString();
                 }
-                if(i!=1)
-                Dt.Rows.Add(row);
+                if (i != 1)
+                    Dt.Rows.Add(row);
                 /*string teststring =row.ItemArray[3].ToString();*/
             }
             return Dt;
         }
-        public static string DTToJSON(DataTable table)
-        {
-            string JSONString = string.Empty;
-            JSONString = JsonConvert.SerializeObject(table);
-            JSONString = "{\"Workitems\":" + JSONString + "}";
-            return JSONString;
-        }
-
-
+       
     }
 
 }
