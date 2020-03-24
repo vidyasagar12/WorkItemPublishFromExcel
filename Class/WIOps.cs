@@ -36,7 +36,7 @@ namespace WorkItemPublish.Class
 
             return WitClient.CreateWorkItemAsync(patchDocument, ProjectName, WorkItemTypeName).Result;
         }
-        public static WorkItem UpdateWorkItem(int  parentId, int childId, string message)
+        public static WorkItem UpdateWorkItemLink(int  parentId, int childId, string message)
         {
             JsonPatchDocument patchDocument = new JsonPatchDocument();
 
@@ -56,6 +56,20 @@ namespace WorkItemPublish.Class
                 });
 
             return WitClient.UpdateWorkItemAsync(patchDocument, childId).Result;
+        }
+        public static WorkItem UpdateWorkItemFields(int WIId, Dictionary<string, object> Fields)
+        {
+            JsonPatchDocument patchDocument = new JsonPatchDocument();
+
+            foreach (var key in Fields.Keys)
+                patchDocument.Add(new JsonPatchOperation()
+                {
+                    Operation = Operation.Add,
+                    Path = "/fields/" + key,
+                    Value = Fields[key]
+                });
+
+            return WitClient.UpdateWorkItemAsync(patchDocument, WIId).Result;
         }
         public static void ConnectWithPAT(string ServiceURL, string PAT)
         {
