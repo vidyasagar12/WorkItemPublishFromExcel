@@ -68,8 +68,10 @@ namespace WorkItemPublish.Class
                     Path = "/fields/" + key,
                     Value = Fields[key]
                 });
-
-            return WitClient.UpdateWorkItemAsync(patchDocument, WIId).Result;
+            if (Fields.Count != 0)
+                return WitClient.UpdateWorkItemAsync(patchDocument, WIId).Result;
+            else
+                return null;
         }
         public static void ConnectWithPAT(string ServiceURL, string PAT)
         {

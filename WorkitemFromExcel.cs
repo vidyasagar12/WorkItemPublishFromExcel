@@ -13,7 +13,6 @@ namespace WorkItemPublish
         //public string createdID { get; set; }
         public ParentWorkItem parent { get; set; }
         public string  WiState { get; set; }
-        public int  Old_ID { get; set; }
         public string  AreaPath { get; set; }
         public string  Itertation { get; set; }
         //public string  WiState { get; set; }
