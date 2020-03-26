@@ -100,13 +100,13 @@ namespace WorkItemPublish
         public static ParentWorkItem getParentData(DataTable dt, int rowindex, int columnindex)
         {
             ParentWorkItem workItem = new ParentWorkItem();
-            bool hasParent;
+           // bool hasParent;
 
             if (columnindex > 0)
             {
                 for (int i = rowindex; i >= 0; i--)
                 {
-                    hasParent = false;
+                   // hasParent = false;
                     DataRow dr = dt.Rows[i];
                     int colindex = columnindex;
                     while (colindex > 0)
@@ -114,7 +114,7 @@ namespace WorkItemPublish
                         int index = colindex - 1;
                         if (!string.IsNullOrEmpty(dr[TitleColumns[index]].ToString()))
                         {
-                            hasParent = true;
+                            //hasParent = true;
                             workItem.Id = int.Parse(dr["ID"].ToString());
                             workItem.tittle = dr[TitleColumns[index]].ToString();
                             break;
