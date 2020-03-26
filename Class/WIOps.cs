@@ -1,8 +1,4 @@
-﻿using Microsoft.TeamFoundation.Build.WebApi;
-using Microsoft.TeamFoundation.Core.WebApi;
-using Microsoft.TeamFoundation.SourceControl.WebApi;
-using Microsoft.TeamFoundation.TestManagement.WebApi;
-using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
+﻿using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -10,10 +6,6 @@ using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WorkItemPublish.Class
 {
@@ -36,24 +28,24 @@ namespace WorkItemPublish.Class
 
             return WitClient.CreateWorkItemAsync(patchDocument, ProjectName, WorkItemTypeName).Result;
         }
-        public static WorkItem UpdateWorkItemLink(int  parentId, int childId, string message)
+        public static WorkItem UpdateWorkItemLink(int parentId, int childId, string message)
         {
             JsonPatchDocument patchDocument = new JsonPatchDocument();
 
-                patchDocument.Add(new JsonPatchOperation()
+            patchDocument.Add(new JsonPatchOperation()
+            {
+                Operation = Operation.Add,
+                Path = "/relations/-",
+                Value = new
                 {
-                    Operation = Operation.Add,
-                    Path = "/relations/-",
-                    Value = new
+                    rel = "System.LinkTypes.Hierarchy-Reverse",
+                    url = Url + "/_apis/wit/workitems/" + parentId,
+                    attributes = new
                     {
-                        rel = "System.LinkTypes.Hierarchy-Reverse",
-                        url = Url + "/_apis/wit/workitems/" + parentId,
-                        attributes = new
-                        {
-                            comment = "Linking the workitems"
-                        }
+                        comment = "Linking the workitems"
                     }
-                });
+                }
+            });
 
             return WitClient.UpdateWorkItemAsync(patchDocument, childId).Result;
         }
