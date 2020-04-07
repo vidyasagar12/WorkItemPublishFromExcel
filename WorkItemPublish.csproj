@@ -125,6 +125,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Class\APIRequest.cs" />
     <Compile Include="WorkitemFromExcel.cs" />
     <Compile Include="Class\WIOps.cs" />
     <Compile Include="Model\WIFields.cs" />
@@ -133,6 +134,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="JSONS\CreateState.json" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

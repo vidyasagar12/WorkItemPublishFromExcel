@@ -23,4 +23,14 @@ namespace WorkItemPublish
         public string tittle { get; set; }
         //public string createdID { get; set; }
     }
+    public class WItypeStates
+    {
+        public List<States> value { get; set; }
+    }
+    public class States
+    {
+        public string  name { get; set; }
+        //public string category { get; set; }
+
+    }
 }

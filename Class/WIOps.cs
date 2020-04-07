@@ -11,68 +11,110 @@ namespace WorkItemPublish.Class
 {
     class WIOps
     {
-        static string Url = "https://dev.azure.com/sagorg1";
+        static string Url;
 
         static WorkItemTrackingHttpClient WitClient;
         public static WorkItem CreateWorkItem(string ProjectName, string WorkItemTypeName, Dictionary<string, object> Fields)
         {
             JsonPatchDocument patchDocument = new JsonPatchDocument();
+            try
+            {
+                foreach (var key in Fields.Keys)
+                    patchDocument.Add(new JsonPatchOperation()
+                    {
+                        Operation = Operation.Add,
+                        Path = "/fields/" + key,
+                        Value = Fields[key]
+                    });
 
-            foreach (var key in Fields.Keys)
-                patchDocument.Add(new JsonPatchOperation()
-                {
-                    Operation = Operation.Add,
-                    Path = "/fields/" + key,
-                    Value = Fields[key]
-                });
-
-            return WitClient.CreateWorkItemAsync(patchDocument, ProjectName, WorkItemTypeName).Result;
+                return WitClient.CreateWorkItemAsync(patchDocument, ProjectName, WorkItemTypeName).Result;
+            }
+            catch (Exception E)
+            {
+                Console.WriteLine(E.InnerException.Message);
+                return null;
+            }
         }
         public static WorkItem UpdateWorkItemLink(int parentId, int childId, string message)
         {
             JsonPatchDocument patchDocument = new JsonPatchDocument();
-
-            patchDocument.Add(new JsonPatchOperation()
+            try
             {
-                Operation = Operation.Add,
-                Path = "/relations/-",
-                Value = new
-                {
-                    rel = "System.LinkTypes.Hierarchy-Reverse",
-                    url = Url + "/_apis/wit/workitems/" + parentId,
-                    attributes = new
-                    {
-                        comment = "Linking the workitems"
-                    }
-                }
-            });
-
-            return WitClient.UpdateWorkItemAsync(patchDocument, childId).Result;
-        }
-        public static WorkItem UpdateWorkItemFields(int WIId, Dictionary<string, object> Fields)
-        {
-            JsonPatchDocument patchDocument = new JsonPatchDocument();
-
-            foreach (var key in Fields.Keys)
                 patchDocument.Add(new JsonPatchOperation()
                 {
                     Operation = Operation.Add,
-                    Path = "/fields/" + key,
-                    Value = Fields[key]
+                    Path = "/relations/-",
+                    Value = new
+                    {
+                        rel = "System.LinkTypes.Hierarchy-Reverse",
+                        url = Url + "/_apis/wit/workitems/" + parentId,
+                        attributes = new
+                        {
+                            comment = "Linking the workitems"
+                        }
+                    }
                 });
-            if (Fields.Count != 0)
-                return WitClient.UpdateWorkItemAsync(patchDocument, WIId).Result;
-            else
+
+                return WitClient.UpdateWorkItemAsync(patchDocument, childId).Result;
+            }
+            catch (Exception E)
+            {
+                Console.WriteLine(E.InnerException.Message);
                 return null;
+            }
         }
+        public static WorkItem UpdateWorkItemFields(int WIId, Dictionary<string, object> Fields)
+        {
+            try
+            {
+                JsonPatchDocument patchDocument = new JsonPatchDocument();
+                foreach (var key in Fields.Keys) {
+                    JsonPatchOperation Jsonpatch = new JsonPatchOperation()
+                    {
+                        Operation = Operation.Replace,
+                        Path = "/fields/" + key,
+                        Value = Fields[key]
+                    };
+                    if(!patchDocument.Contains(Jsonpatch))
+                    patchDocument.Add(Jsonpatch);
+                }
+                if (patchDocument.Count != 0)
+                    return WitClient.UpdateWorkItemAsync(patchDocument, WIId).Result;
+                else
+                    return null;
+            }
+            catch(Exception E)
+            {
+                Console.WriteLine(E.InnerException.Message);
+                return null;
+            }
+        }
+   
         public static void ConnectWithPAT(string ServiceURL, string PAT)
         {
-            VssConnection connection = new VssConnection(new Uri(ServiceURL), new VssBasicCredential("xx", PAT));
-            InitClients(connection);
+            try
+            {
+                Url = ServiceURL;
+                VssConnection connection = new VssConnection(new Uri(ServiceURL), new VssBasicCredential("xx", PAT));
+                InitClients(connection);
+            }
+            catch (Exception E)
+            {
+                Console.WriteLine(E.Message);
+                
+            }
         }
         static void InitClients(VssConnection Connection)
         {
-            WitClient = Connection.GetClient<WorkItemTrackingHttpClient>();
+            try
+            {
+                WitClient = Connection.GetClient<WorkItemTrackingHttpClient>();
+            }
+            catch (Exception E)
+            {
+                Console.WriteLine(E.Message);
+                
+            }
         }
     }
 }
