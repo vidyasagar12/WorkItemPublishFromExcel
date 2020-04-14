@@ -1,7 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using WorkItemPublish.Class;
+using WorkItemPublish.Model.Mapper;
 using Excel = Microsoft.Office.Interop.Excel;
 namespace WorkItemPublish
 {
@@ -18,31 +21,43 @@ namespace WorkItemPublish
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Enter Azure DevOps Organisation Name: ");
-            Url = "https://dev.azure.com/"+Console.ReadLine();
-            Console.WriteLine("Enter Personal Access Token: ");
-            UserPAT = Console.ReadLine();
-            Console.WriteLine("Enter Source Project name: ");
-            OldTeamProject = Console.ReadLine();
-            while(string.IsNullOrEmpty(OldTeamProject))
+            try
             {
-                Console.WriteLine("Please Enter the Source Project Name");
+
+                /*Console.WriteLine("Enter Azure DevOps Organisation Name: ");
+                Url = "https://dev.azure.com/"+Console.ReadLine();
+                Console.WriteLine("Enter Personal Access Token: ");
+                UserPAT = Console.ReadLine();
+                Console.WriteLine("Enter Source Project name: ");
                 OldTeamProject = Console.ReadLine();
-            }
-            Console.WriteLine("Enter Azure DevOps Destination Project name: ");
-            ProjectName = Console.ReadLine();
-            while (string.IsNullOrEmpty(ProjectName))
-            {
-                Console.WriteLine("Please Enter the Destination Project Name");
+                while(string.IsNullOrEmpty(OldTeamProject))
+                {
+                    Console.WriteLine("Please Enter the Source Project Name");
+                    OldTeamProject = Console.ReadLine();
+                }
+                Console.WriteLine("Enter Azure DevOps Destination Project name: ");
                 ProjectName = Console.ReadLine();
+                while (string.IsNullOrEmpty(ProjectName))
+                {
+                    Console.WriteLine("Please Enter the Destination Project Name");
+                    ProjectName = Console.ReadLine();
+                }*/
+                Console.Write("Enter The Map File Path:");
+                string MapFilePath = Console.ReadLine();
+                string MapFileContent = File.ReadAllText(MapFilePath);
+                Mapper mapperObject = JsonConvert.DeserializeObject<Mapper>(MapFileContent);
+                WIOps.ConnectWithPAT(Url, UserPAT);
+                DT = ReadExcel();
+                List<WorkitemFromExcel> WiList = GetWorkItems();
+                CreateLinks(WiList);
+                UpdateWIFields();
+                Console.WriteLine("Successfully Migrated WorkItems");
+                Console.ReadLine();
             }
-            WIOps.ConnectWithPAT(Url, UserPAT);
-            DT = ReadExcel();
-            List<WorkitemFromExcel> WiList = GetWorkItems();            
-            CreateLinks(WiList);
-            UpdateWIFields();
-            Console.WriteLine("Successfully Migrated WorkItems");
-            Console.ReadLine();
+            catch(Exception E)
+            {
+                Console.WriteLine(E.Message);
+            }
         }
         public static List<WorkitemFromExcel> GetWorkItems()
         {
