@@ -19,18 +19,13 @@ namespace WorkItemPublish
         static DataTable DT;
         static List<string> TitleColumns = new List<string>();
         static public string OldTeamProject;
-        static public string ExcelUniqueField;
+    /*    static public string ExcelUniqueField;*/
         public static Mapper mapperObject;
-        static string ExcelPath = "";
-        static string CreatedlogFilePath = "";
-        static string UpdatedlogFilePath = "";
-        static string MapFilePath = "";
-        static string createdWIsstring;
-        static string updatedWIsstring;
-        static Dictionary<string, string> CreatedWIS= new Dictionary<string, string>();
-        static Dictionary<string, string> UpdatedWIS= new Dictionary<string, string>();
-        static Dictionary<String, string> FieldMapper = new Dictionary<string, string>();
-        static Dictionary<string, String> DataMapper = new Dictionary<string, string>();
+        static string ExcelPath = "";        
+        static string MapFilePath = "";        
+        static string updatedWIsstring;         
+        static Dictionary<string, string> FieldMapper = new Dictionary<string, string>();
+        static Dictionary<string, string> DataMapper = new Dictionary<string, string>();
         static List<string> UpdateAfterCreating = new List<string>() { "ID" };
         static List<string> RequiredFields = new List<string>();
         static string CurrentWorkItem = "";
@@ -48,8 +43,7 @@ namespace WorkItemPublish
                     Console.Write("Enter Excel file path:");
                     ExcelPath = Console.ReadLine();                    
 
-                } while (!File.Exists(ExcelPath));
-                CheckLogFile();
+                } while (!File.Exists(ExcelPath));                
                 do
                 {
                     Console.Write("Enter The Map File Path:");
@@ -59,12 +53,12 @@ namespace WorkItemPublish
                 mapperObject = JsonConvert.DeserializeObject<Mapper>(MapFileContent);
                 OldTeamProject = mapperObject.source_project;
                 ProjectName = mapperObject.target_project;
-                ExcelUniqueField = mapperObject.Unique_ID_Field;
+                
                 MapperMethod();
                 DT = ReadExcel();
                 WIOps.ConnectWithPAT(Url, UserPAT);
                 List<WorkitemFromExcel> WiList = GetWorkItems();
-                CreateLinks(WiList);
+                CreateLinks();
                 UpdateWIFields();
                 Console.WriteLine("Successfully Migrated WorkItems");               
             }
@@ -75,68 +69,10 @@ namespace WorkItemPublish
             }
             finally
             {
-                if(!string.IsNullOrEmpty(createdWIsstring))
-                File.AppendAllText(CreatedlogFilePath, createdWIsstring);
-                if(!string.IsNullOrEmpty(updatedWIsstring))
-                File.AppendAllText(UpdatedlogFilePath, updatedWIsstring);
+                ExportDataSetToExcel();                
                 Console.WriteLine("Please Enter Any Key To Exit");
                 Console.ReadLine();
 
-            }
-        }
-        static void CheckLogFile()
-        {
-            try
-            {
-                String[] SplitPath = ExcelPath.Split('.');
-                CreatedlogFilePath = SplitPath[0] + "-CreatedWIs.txt";
-                UpdatedlogFilePath = SplitPath[0] + "-UpdatedWIs.txt";
-                if (!File.Exists(CreatedlogFilePath) || !File.Exists(UpdatedlogFilePath))
-                {
-                    if (!File.Exists(CreatedlogFilePath))
-                    {
-                        File.Create(CreatedlogFilePath);
-                    }
-                    else if (!File.Exists(UpdatedlogFilePath))
-                    {
-                        File.Create(UpdatedlogFilePath);
-                    }
-                }
-                else
-                {
-                    String logFileContent = File.ReadAllText(CreatedlogFilePath);
-                    ReadLogFile(logFileContent, CreatedWIS);
-                    logFileContent = File.ReadAllText(UpdatedlogFilePath);
-                    ReadLogFile(logFileContent, UpdatedWIS);
-                }
-            }
-            catch(Exception E)
-            {
-                Console.WriteLine("Error Occured While Reading Log File");
-                throw E;
-            }
-        }
-        public static void ReadLogFile(string Content,Dictionary<string,string> dictionary)
-        {
-            try
-            {
-                if (!string.IsNullOrEmpty(Content))
-                {
-                    string[] logs = Content.Split(',');
-                    foreach (string log in logs)
-                    {
-                        if (!string.IsNullOrEmpty(log))
-                        {
-                            string[] Ids = log.Split('-');
-                            if (!dictionary.ContainsValue(Ids[1]))
-                                dictionary.Add(Ids[0], Ids[1]);
-                        }
-                    }
-                }
-            }
-            catch(Exception E)
-            {
-                throw E;
             }
         }
         
@@ -183,17 +119,16 @@ namespace WorkItemPublish
                         WorkitemFromExcel item = new WorkitemFromExcel();
                         if (DT.Rows[i] != null)
                         {
-                            if (CreatedWIS.ContainsKey(dr[ExcelUniqueField].ToString()))
+                            if (!string.IsNullOrEmpty(dr["ID"].ToString()))
                             {
-                                item.id = int.Parse(CreatedWIS[dr[ExcelUniqueField].ToString()]);                               
+                                item.id = int.Parse(dr["ID"].ToString());                               
                             }
                             else
                             {
                                 item.id = createWorkItem(dr);
-                                Console.WriteLine("WorkItem Created With ID= " + item.id);
-                                createdWIsstring += dr[ExcelUniqueField] + "-" + item.id + ",";
+                                Console.WriteLine("WorkItem Created With ID= " + item.id);                                
+                                dr["ID"] = item.id.ToString();
                             }
-                            dr["ID"] = item.id.ToString();                
 
                             int columnindex = 0;
                             foreach (var col in TitleColumns)
@@ -204,7 +139,10 @@ namespace WorkItemPublish
                                     {
                                         item.tittle = dr[col].ToString();
                                         if (i > 0 && columnindex > 0)
+                                        {
                                             item.parent = getParentData(DT, i - 1, columnindex);
+                                            dr["ParentID"] = item.parent.Id;
+                                        }
                                         break;
                                     }
                                 }
@@ -225,20 +163,17 @@ namespace WorkItemPublish
             }
 
         }
-        public static void CreateLinks(List<WorkitemFromExcel> WiList)
+        public static void CreateLinks()
         {
             try
-            {
-                if (WiList == null)
-                    Console.WriteLine("No WorkItems Were Created To Updated Links");
-                foreach (var wi in WiList)
+            {              
+                foreach(DataRow row in DT.Rows)
                 {
-                    if (!UpdatedWIS.ContainsValue(wi.id.ToString()))
+                    if(!string.IsNullOrEmpty( row["ParentID"].ToString()))
                     {
-                        CurrentWorkItem = wi.tittle;
-                        Console.WriteLine("Updating Links of" + wi.id);
-                        if (wi.parent != null)
-                            WIOps.UpdateWorkItemLink(wi.parent.Id, wi.id, "");
+                        CurrentWorkItem = row["ID"].ToString();
+                        Console.WriteLine("Updating Links of" + CurrentWorkItem);                        
+                            WIOps.UpdateWorkItemLink(int.Parse(row["ParentID"].ToString()), int.Parse(row["ID"].ToString()), "");
                     }
                 }
             }
@@ -297,7 +232,7 @@ namespace WorkItemPublish
                 foreach (DataColumn column in DT.Columns)
                 {
                     string ColumnName = column.ColumnName;
-                    string value = Dr[ColumnName].ToString();                                       
+                    string value = Dr[ColumnName].ToString();
                     /*if (value.StartsWith(@"\"))
                     {
                         if (value == @"\")
@@ -358,11 +293,11 @@ namespace WorkItemPublish
         public static void UpdateWIFields()
         {
             try
-            {       
+            { 
 
                 foreach (DataRow row in DT.Rows)
                 {
-                    if (!UpdatedWIS.ContainsKey(row[ExcelUniqueField].ToString()))
+                    if (row["Updated"].ToString().ToLower()!="true")
                     {
                         CurrentWorkItem = row["ID"].ToString();
                         Console.WriteLine("Updating Fields of" +CurrentWorkItem);
@@ -371,19 +306,23 @@ namespace WorkItemPublish
                         {
                             if (!string.IsNullOrEmpty(row[col].ToString()))
                             {
-                                if (col.ToString() != "ID" && UpdateAfterCreating.Contains(col.ColumnName))
+                                if (col.ToString() != "ID" && col.ToString() != "Reason" && UpdateAfterCreating.Contains(col.ColumnName))
                                 {
-                                    string val = row[col.ToString()].ToString();//.TrimStart('\\');
+                                    string val = row[col.ToString()].ToString();
                                     if (!string.IsNullOrEmpty(val))
-                                        Updatefields.Add(col.ToString(), val);
+                                    {
+                                        if (DataMapper.ContainsKey(val))
+                                            Updatefields.Add(col.ColumnName, DataMapper[val]);
+                                        else
+                                            Updatefields.Add(col.ColumnName, val);
+                                    }
+
                                 }
                             }
                         }
                         WorkItem UpdatedWI = WIOps.UpdateWorkItemFields(int.Parse(row["ID"].ToString()), Updatefields);
                         if (UpdatedWI != null)
-                        {
-                            updatedWIsstring += row[ExcelUniqueField] + "-" + UpdatedWI.Id.ToString() + ",";
-                        }
+                            row["Updated"] = "true";
                     }
                 }
             }
@@ -403,7 +342,7 @@ namespace WorkItemPublish
             {
                 Excel.Application xlApp = new Excel.Application();                
                
-                while(!System.IO.File.Exists(ExcelPath)||(ExcelPath.EndsWith("xls")&&ExcelPath.EndsWith("xlsx")))
+                while(!File.Exists(ExcelPath)||(ExcelPath.EndsWith("xls")&&ExcelPath.EndsWith("xlsx")))
                 {
                     Console.WriteLine("File Not Found Or File Is not in supported format Please Enter A valid Path");
                     ExcelPath = Console.ReadLine();
@@ -442,7 +381,17 @@ namespace WorkItemPublish
                     if(!Dt.Columns.Contains("ID"))
                     {
                         DataColumn column = new DataColumn("ID");
-                        Dt.Columns.Add("ID");
+                        Dt.Columns.Add(column);
+                    }
+                    if(!Dt.Columns.Contains("ParentID"))
+                    {
+                        DataColumn column = new DataColumn("ParentID");
+                        Dt.Columns.Add(column);
+                    }
+                    if(!Dt.Columns.Contains("Updated"))
+                    {
+                        DataColumn column = new DataColumn("Updated");
+                        Dt.Columns.Add(column);
                     }
 
                     if (i != 1)
@@ -452,8 +401,9 @@ namespace WorkItemPublish
                     }
                     
                 }
-
+                xlWorkbook.Close(true);
             }
+
             catch (Exception ex)
             {
                 Console.WriteLine("Error Occured While Reading Excel File");
@@ -461,7 +411,45 @@ namespace WorkItemPublish
             }
             return Dt;
         }
+        static DataSet DS = new DataSet();
+        private static void ExportDataSetToExcel()
+        {
+            DS.Tables.Add(DT);
+            //Creae an Excel application instance
+            Excel.Application excelApp = new Excel.Application();
+            object file = System.Reflection.Missing.Value;            
+            //Create an Excel workbook instance and open it from the predefined location
+            Excel.Workbook excelWorkBook = excelApp.Workbooks.Open(ExcelPath,file,false,file,file,file,true,file,file,true,file,file,file,file,file);
+            
 
+            foreach (DataTable table in DS.Tables)
+            {
+                //Add a new worksheet to workbook with the Datatable name
+
+                Excel.Worksheet excelWorkSheet = excelWorkBook.Sheets[1];
+                if (excelWorkSheet.Name != table.TableName)
+                {
+                    excelWorkSheet = excelWorkBook.Sheets.Add();
+                    excelWorkSheet.Name = table.TableName;
+                }
+            for (int i = 1; i < table.Columns.Count + 1; i++)
+                {
+                    excelWorkSheet.Cells[1, i] = table.Columns[i - 1].ColumnName;
+                }
+
+                for (int j = 0; j < table.Rows.Count; j++)
+                {
+                    for (int k = 0; k < table.Columns.Count; k++)
+                    {
+                        excelWorkSheet.Cells[j + 2, k + 1] = table.Rows[j].ItemArray[k].ToString();
+                    }
+                }
+            }
+
+            excelWorkBook.Save();
+            excelWorkBook.Close(true);
+            excelApp.Quit();
+        } 
     }
 
 }
