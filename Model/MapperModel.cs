@@ -50,4 +50,9 @@ namespace WorkItemPublish.Model.Mapper
         public TypeMap type_map { get; set; }
         public FieldMap field_map { get; set; }
     }
+    public class FieldsMapper
+    {
+        public string TargetFieldName { get; set; }
+        public Dictionary<string,string> FieldSupprotedValues { get; set; }
+    }
 }

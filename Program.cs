@@ -19,13 +19,11 @@ namespace WorkItemPublish
         static DataTable DT;
         static List<string> TitleColumns = new List<string>();
         static public string OldTeamProject;
-    /*    static public string ExcelUniqueField;*/
         public static Mapper mapperObject;
-        static string ExcelPath = "";        
-        static string MapFilePath = "";        
-        static string updatedWIsstring;         
-        static Dictionary<string, string> FieldMapper = new Dictionary<string, string>();
-        static Dictionary<string, string> DataMapper = new Dictionary<string, string>();
+        static string ExcelPath = "";
+        static string MapFilePath = "";
+        static Dictionary<string, FieldsMapper> FieldMapper = new Dictionary<string, FieldsMapper>();
+
         static List<string> UpdateAfterCreating = new List<string>() { "ID" };
         static List<string> RequiredFields = new List<string>();
         static string CurrentWorkItem = "";
@@ -37,69 +35,77 @@ namespace WorkItemPublish
                 Console.WriteLine("Enter Azure DevOps Organisation Name: ");
                 Url = "https://dev.azure.com/" + Console.ReadLine();
                 Console.WriteLine("Enter Personal Access Token: ");
-                UserPAT = Console.ReadLine();                
+                UserPAT = Console.ReadLine();
                 do
                 {
                     Console.Write("Enter Excel file path:");
-                    ExcelPath = Console.ReadLine();                    
+                    ExcelPath = Console.ReadLine();
 
-                } while (!File.Exists(ExcelPath));                
+                } while (!File.Exists(ExcelPath));
                 do
                 {
                     Console.Write("Enter The Map File Path:");
-                    MapFilePath = Console.ReadLine();                    
-                } while (!File.Exists(MapFilePath)&&MapFilePath.ToLower().EndsWith(".json"));
+                    MapFilePath = Console.ReadLine();
+                } while (!File.Exists(MapFilePath) && MapFilePath.ToLower().EndsWith(".json"));
                 string MapFileContent = File.ReadAllText(MapFilePath);
                 mapperObject = JsonConvert.DeserializeObject<Mapper>(MapFileContent);
                 OldTeamProject = mapperObject.source_project;
                 ProjectName = mapperObject.target_project;
-                
+
                 MapperMethod();
                 DT = ReadExcel();
                 WIOps.ConnectWithPAT(Url, UserPAT);
                 List<WorkitemFromExcel> WiList = GetWorkItems();
                 CreateLinks();
                 UpdateWIFields();
-                Console.WriteLine("Successfully Migrated WorkItems");               
+                Console.WriteLine("Successfully Migrated WorkItems");
             }
-            catch(Exception E)
+            catch (Exception E)
             {
-                Console.WriteLine("Exception Message:"+E.Message);
-                Console.WriteLine(" Inner Exception Message:"+E.InnerException);
+                Console.WriteLine("Exception Message:" + E.Message);
+                Console.WriteLine(" Inner Exception Message:" + E.InnerException);
             }
             finally
             {
-                ExportDataSetToExcel();                
+                ExportDataSetToExcel();
                 Console.WriteLine("Please Enter Any Key To Exit");
                 Console.ReadLine();
 
             }
         }
-        
+
         public static void MapperMethod()
         {
             try
             {
+                FieldsMapper FMObject;
                 //For Mapping Columns To Azure Devops Fields
-                foreach(Field field in mapperObject.field_map.field)
+                foreach (Field field in mapperObject.field_map.field)
                 {
-                    if(field.ShouldUpdateAfterCreating!=null)
+                    if (field.ShouldUpdateAfterCreating != null)
                         if (field.ShouldUpdateAfterCreating.ToLower() == "true")
                             UpdateAfterCreating.Add(field.source);
-                    if(!FieldMapper.ContainsKey(field.source))
-                    FieldMapper.Add(field.source, field.target);
-                    if (field.mapping != null)
+                    if (!FieldMapper.ContainsKey(field.source))
                     {
-                        foreach (var data in field.mapping.values)
+                        FMObject = new FieldsMapper();
+                        FMObject.TargetFieldName = field.target;
+                        if (field.mapping != null)
                         {
-                            if(!DataMapper.ContainsKey(data.source))
-                                DataMapper.Add(data.source, data.target);
+                            foreach (var data in field.mapping.values)
+                            {
+                                FMObject.FieldSupprotedValues = new Dictionary<string, string>();
+                                if (!FMObject.FieldSupprotedValues.ContainsKey(data.source))
+                                {
+                                    FMObject.FieldSupprotedValues.Add(data.source, data.target);
+                                }
+                            }
                         }
+                        FieldMapper.Add(field.source, FMObject);
                     }
                 }
-               
+
             }
-            catch(Exception E)
+            catch (Exception E)
             {
                 Console.WriteLine("Error Occured While Mapping Fields");
                 throw (E);
@@ -121,12 +127,12 @@ namespace WorkItemPublish
                         {
                             if (!string.IsNullOrEmpty(dr["ID"].ToString()))
                             {
-                                item.id = int.Parse(dr["ID"].ToString());                               
+                                item.id = int.Parse(dr["ID"].ToString());
                             }
                             else
                             {
                                 item.id = createWorkItem(dr);
-                                Console.WriteLine("WorkItem Created With ID= " + item.id);                                
+                                Console.WriteLine("WorkItem Created With ID= " + item.id);
                                 dr["ID"] = item.id.ToString();
                             }
 
@@ -159,27 +165,27 @@ namespace WorkItemPublish
             catch (Exception E)
             {
                 Console.WriteLine("Error Occured While Iterating The Data");
-                throw E;                
+                throw E;
             }
 
         }
         public static void CreateLinks()
         {
             try
-            {              
-                foreach(DataRow row in DT.Rows)
+            {
+                foreach (DataRow row in DT.Rows)
                 {
-                    if(!string.IsNullOrEmpty( row["ParentID"].ToString()))
+                    if (!string.IsNullOrEmpty(row["ParentID"].ToString()))
                     {
                         CurrentWorkItem = row["ID"].ToString();
-                        Console.WriteLine("Updating Links of" + CurrentWorkItem);                        
-                            WIOps.UpdateWorkItemLink(int.Parse(row["ParentID"].ToString()), int.Parse(row["ID"].ToString()), "");
+                        Console.WriteLine("Updating Links of" + CurrentWorkItem);
+                        WIOps.UpdateWorkItemLink(int.Parse(row["ParentID"].ToString()), int.Parse(row["ID"].ToString()), "");
                     }
                 }
             }
-            catch(Exception E)
+            catch (Exception E)
             {
-                Console.WriteLine("Error Occured While Creating Parent-Child Relations For"+CurrentWorkItem);
+                Console.WriteLine("Error Occured While Creating Parent-Child Relations For" + CurrentWorkItem);
                 throw E;
             }
         }
@@ -214,7 +220,7 @@ namespace WorkItemPublish
                 }
                 return workItem;
             }
-            catch(Exception E)
+            catch (Exception E)
             {
                 Console.WriteLine("Error Occured While Finding Parent Of WorkItems");
                 throw E;
@@ -223,7 +229,7 @@ namespace WorkItemPublish
         }
         static int createWorkItem(DataRow Dr)
         {
-            string WIType="";
+            string WIType = "";
 
             try
             {
@@ -233,86 +239,76 @@ namespace WorkItemPublish
                 {
                     string ColumnName = column.ColumnName;
                     string value = Dr[ColumnName].ToString();
-                    /*if (value.StartsWith(@"\"))
-                    {
-                        if (value == @"\")
-                            value = ProjectName;
-                        value = value.TrimStart('\\');
-                    }
-                    if (value.StartsWith(OldTeamProject))
-                        value = value.Replace(OldTeamProject, ProjectName);*/
                     if (!string.IsNullOrEmpty(value) && !UpdateAfterCreating.Contains(ColumnName))
                     {
                         if (ColumnName == mapperObject.WorkItem_Type_Field)
-                        {                            
-                                if (DataMapper.ContainsKey(value))
-                                    WIType = DataMapper[value];
-                                else
-                                    WIType = value;
+                        {
+                            if (FieldMapper[ColumnName].FieldSupprotedValues.ContainsKey(value))
+                                WIType = FieldMapper[ColumnName].FieldSupprotedValues[value];
+                            else
+                                WIType = value;
+                            continue;
+                        }
+
+                        if (ColumnName.StartsWith("Title"))
+                        {
+                            CurrentWorkItem = value;
+                            fields.Add("Title", value);
                             continue;
                         }
                         if (FieldMapper.ContainsKey(ColumnName))
                         {
-                            if (ColumnName.StartsWith("Title"))
+                            if (FieldMapper[ColumnName].FieldSupprotedValues != null)
                             {
-                                CurrentWorkItem = value;
-                                fields.Add("Title", value);
-                                continue;
+                                if (FieldMapper[ColumnName].FieldSupprotedValues.ContainsKey(value))
+                                    fields.Add(FieldMapper[ColumnName].TargetFieldName, FieldMapper[ColumnName].FieldSupprotedValues[value]);
                             }
-                            if (DataMapper.ContainsKey(value))
-                                fields.Add(FieldMapper[ColumnName], DataMapper[value]);
                             else
-                                fields.Add(FieldMapper[ColumnName], value);
-                        }                        
-                        else
-                        {
-                            if (ColumnName.StartsWith("Title"))
-                            {
-                                fields.Add("Title", value);
-                                continue;
-                            }
-                            if (DataMapper.ContainsKey(value))
-                                fields.Add(column.ColumnName, DataMapper[value]);
-                            else
-                                fields.Add(column.ColumnName, value);
+                                fields.Add(FieldMapper[ColumnName].TargetFieldName, value);
                         }
-
+                        else
+                            fields.Add(column.ColumnName, value);
                     }
 
                 }
-                var newWi = WIOps.CreateWorkItem(ProjectName, WIType, fields);                
-                    
-                    return newWi.Id.Value;
+                var newWi = WIOps.CreateWorkItem(ProjectName, WIType, fields);
+
+                return newWi.Id.Value;
             }
-            catch(Exception E)
+            catch (Exception E)
             {
-                Console.WriteLine("Error  Occured While Creatig WorkItem"+CurrentWorkItem);
-                throw E;                
+                Console.WriteLine("Error  Occured While Creatig WorkItem" + CurrentWorkItem);
+                throw E;
             }
         }
         public static void UpdateWIFields()
         {
             try
-            { 
+            {
 
                 foreach (DataRow row in DT.Rows)
                 {
-                    if (row["Updated"].ToString().ToLower()!="true")
+                    if (row["Updated"].ToString().ToLower() != "true")
                     {
                         CurrentWorkItem = row["ID"].ToString();
-                        Console.WriteLine("Updating Fields of" +CurrentWorkItem);
+                        Console.WriteLine("Updating Fields of" + CurrentWorkItem);
                         Dictionary<string, object> Updatefields = new Dictionary<string, object>();
                         foreach (DataColumn col in DT.Columns)
                         {
                             if (!string.IsNullOrEmpty(row[col].ToString()))
                             {
-                                if (col.ToString() != "ID" && col.ToString() != "Reason" && UpdateAfterCreating.Contains(col.ColumnName))
+                                if (col.ToString() != "ID" && UpdateAfterCreating.Contains(col.ColumnName))
                                 {
                                     string val = row[col.ToString()].ToString();
                                     if (!string.IsNullOrEmpty(val))
                                     {
-                                        if (DataMapper.ContainsKey(val))
-                                            Updatefields.Add(col.ColumnName, DataMapper[val]);
+                                        if (FieldMapper.ContainsKey(col.ColumnName))
+                                        {
+                                            if (FieldMapper[col.ColumnName].FieldSupprotedValues.ContainsKey(val))
+                                                Updatefields.Add(FieldMapper[col.ColumnName].TargetFieldName, FieldMapper[col.ColumnName].FieldSupprotedValues[val]);
+                                            else
+                                                Updatefields.Add(FieldMapper[col.ColumnName].TargetFieldName, val);
+                                        }
                                         else
                                             Updatefields.Add(col.ColumnName, val);
                                     }
@@ -326,12 +322,12 @@ namespace WorkItemPublish
                     }
                 }
             }
-            catch(Exception E)
+            catch (Exception E)
             {
-                Console.WriteLine("Error Occured While Updating WorkItem With ID="+CurrentWorkItem);
+                Console.WriteLine("Error Occured While Updating WorkItem With ID=" + CurrentWorkItem);
                 throw E;
             }
-           
+
         }
 
         public static DataTable ReadExcel()
@@ -340,9 +336,9 @@ namespace WorkItemPublish
 
             try
             {
-                Excel.Application xlApp = new Excel.Application();                
-               
-                while(!File.Exists(ExcelPath)||(ExcelPath.EndsWith("xls")&&ExcelPath.EndsWith("xlsx")))
+                Excel.Application xlApp = new Excel.Application();
+
+                while (!File.Exists(ExcelPath) || (ExcelPath.EndsWith("xls") && ExcelPath.EndsWith("xlsx")))
                 {
                     Console.WriteLine("File Not Found Or File Is not in supported format Please Enter A valid Path");
                     ExcelPath = Console.ReadLine();
@@ -362,7 +358,7 @@ namespace WorkItemPublish
                     {
                         if (i == 1)
                         {
-                            ColName = xlRange.Cells[j][i].Value.ToString();                           
+                            ColName = xlRange.Cells[j][i].Value.ToString();
 
                             if (ColName.StartsWith("Title"))
                             {
@@ -378,17 +374,17 @@ namespace WorkItemPublish
                         if (xlRange.Cells[j][i].Value != null)
                             row[ColName] = xlRange.Cells[j][i].Value.ToString();
                     }
-                    if(!Dt.Columns.Contains("ID"))
+                    if (!Dt.Columns.Contains("ID"))
                     {
                         DataColumn column = new DataColumn("ID");
                         Dt.Columns.Add(column);
                     }
-                    if(!Dt.Columns.Contains("ParentID"))
+                    if (!Dt.Columns.Contains("ParentID"))
                     {
                         DataColumn column = new DataColumn("ParentID");
                         Dt.Columns.Add(column);
                     }
-                    if(!Dt.Columns.Contains("Updated"))
+                    if (!Dt.Columns.Contains("Updated"))
                     {
                         DataColumn column = new DataColumn("Updated");
                         Dt.Columns.Add(column);
@@ -396,10 +392,10 @@ namespace WorkItemPublish
 
                     if (i != 1)
                     {
-                        Console.WriteLine("Reading excel data row " + i+"/"+ rowCount);
+                        Console.WriteLine("Reading excel data row " + i + "/" + rowCount);
                         Dt.Rows.Add(row);
                     }
-                    
+
                 }
                 xlWorkbook.Close(true);
             }
@@ -417,10 +413,10 @@ namespace WorkItemPublish
             DS.Tables.Add(DT);
             //Creae an Excel application instance
             Excel.Application excelApp = new Excel.Application();
-            object file = System.Reflection.Missing.Value;            
+            object file = System.Reflection.Missing.Value;
             //Create an Excel workbook instance and open it from the predefined location
-            Excel.Workbook excelWorkBook = excelApp.Workbooks.Open(ExcelPath,file,false,file,file,file,true,file,file,true,file,file,file,file,file);
-            
+            Excel.Workbook excelWorkBook = excelApp.Workbooks.Open(ExcelPath, file, false, file, file, file, true, file, file, true, file, file, file, file, file);
+
 
             foreach (DataTable table in DS.Tables)
             {
@@ -432,7 +428,7 @@ namespace WorkItemPublish
                     excelWorkSheet = excelWorkBook.Sheets.Add();
                     excelWorkSheet.Name = table.TableName;
                 }
-            for (int i = 1; i < table.Columns.Count + 1; i++)
+                for (int i = 1; i < table.Columns.Count + 1; i++)
                 {
                     excelWorkSheet.Cells[1, i] = table.Columns[i - 1].ColumnName;
                 }
@@ -449,7 +445,7 @@ namespace WorkItemPublish
             excelWorkBook.Save();
             excelWorkBook.Close(true);
             excelApp.Quit();
-        } 
+        }
     }
 
 }
