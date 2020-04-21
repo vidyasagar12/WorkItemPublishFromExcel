@@ -33,11 +33,8 @@ namespace WorkItemPublish.Class
             }
             catch (Exception E)
             {
-                Console.WriteLine("Error Occured While Creating Workitem with"+Program.ExcelUniqueField+"="+Fields[Program.ExcelUniqueField]);
-                throw E;
-                
-                
-                return null;
+                Console.WriteLine("Error Occured While Creating Workitem"+Fields["Title"]);
+                throw E;                
             }
         }
         public static WorkItem UpdateWorkItemLink(int parentId, int childId, string message)
