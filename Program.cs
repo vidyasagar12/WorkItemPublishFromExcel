@@ -175,11 +175,14 @@ namespace WorkItemPublish
             {
                 foreach (DataRow row in DT.Rows)
                 {
-                    if (!string.IsNullOrEmpty(row["ParentID"].ToString()))
+                    if (row["Updated"].ToString().ToLower() != "true")
                     {
-                        CurrentWorkItem = row["ID"].ToString();
-                        Console.WriteLine("Updating Links of" + CurrentWorkItem);
-                        WIOps.UpdateWorkItemLink(int.Parse(row["ParentID"].ToString()), int.Parse(row["ID"].ToString()), "");
+                        if (!string.IsNullOrEmpty(row["ParentID"].ToString()))
+                        {
+                            CurrentWorkItem = row["ID"].ToString();
+                            Console.WriteLine("Updating Links of" + CurrentWorkItem);
+                            WIOps.UpdateWorkItemLink(int.Parse(row["ParentID"].ToString()), int.Parse(row["ID"].ToString()), "");
+                        }
                     }
                 }
             }
@@ -285,7 +288,6 @@ namespace WorkItemPublish
         {
             try
             {
-
                 foreach (DataRow row in DT.Rows)
                 {
                     if (row["Updated"].ToString().ToLower() != "true")
@@ -297,7 +299,7 @@ namespace WorkItemPublish
                         {
                             if (!string.IsNullOrEmpty(row[col].ToString()))
                             {
-                                if (col.ToString() != "ID" && UpdateAfterCreating.Contains(col.ColumnName))
+                                if (col.ToString() != "ID" && col.ToString() != "Reason"&& UpdateAfterCreating.Contains(col.ColumnName))
                                 {
                                     string val = row[col.ToString()].ToString();
                                     if (!string.IsNullOrEmpty(val))
